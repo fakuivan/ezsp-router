@@ -76,6 +76,18 @@ static const EmberKeyData defaultLinkKey = {
 
 void app_process_action(void)
 {
+  if (app_state == APP_STATE_CONNECTED) {
+    return;
+  }
+
+  if (app_state == APP_STATE_SCANNING) {
+    return;
+  }
+
+  if (app_state == APP_STATE_RECONNECTING) {
+    return;
+  }
+
   EmberNetworkStatus status = ezspNetworkState();
   if (app_state == APP_STATE_UNKNOWN) {
     switch (status) {
@@ -111,10 +123,6 @@ void app_process_action(void)
     return;
   }
 
-  if (app_state == APP_STATE_RECONNECTING) {
-    return;
-  }
-
   if (app_state == APP_STATE_JOINING) {
     switch (status) {
       case EMBER_JOINED_NETWORK:
@@ -142,10 +150,6 @@ void app_process_action(void)
       unexpectedTransition(&app_state, status);
     else
       app_state = APP_STATE_SCANNING;
-    return;
-  }
-
-  if (app_state == APP_STATE_SCANNING) {
     return;
   }
 
@@ -192,10 +196,6 @@ void app_process_action(void)
       return;
     }
     app_state = APP_STATE_JOINING;
-  }
-
-  if (app_state == APP_STATE_CONNECTED) {
-    return;
   }
 }
 
