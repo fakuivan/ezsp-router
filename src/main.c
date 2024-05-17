@@ -160,7 +160,7 @@ void app_process_action(void)
       return;
     }
     if (join_attempts > max_join_attempts) {
-      lgoInfoln("Max join attempts reached, halting");
+      logInfoln("Max join attempts reached, halting");
       app_state = APP_STATE_HALTED;
       return;
     }
