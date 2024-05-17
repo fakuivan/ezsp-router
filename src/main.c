@@ -47,13 +47,16 @@ typedef enum {
   APP_STATE_SCANNING,
   APP_STATE_SCANNED,
   APP_STATE_JOINING,
-  APP_STATE_CONNECTED
+  APP_STATE_CONNECTED,
+  APP_STATE_HALTED
 } APP_STATE;
 APP_STATE app_state = APP_STATE_UNKNOWN;
 
 EmberZigbeeNetwork best_network = {};
 int8_t best_rssi;
 int networks_found = 0;
+int join_attempts = 0;
+const int max_join_attempts = 5;
 
 void app_init(void)
 {
@@ -81,7 +84,12 @@ static const EmberKeyData defaultLinkKey = {
 
 void app_process_action(void)
 {
+  if (app_state == APP_STATE_HALTED) {
+    return;
+  }
+
   if (app_state == APP_STATE_CONNECTED) {
+    join_attempts = 0;
     return;
   }
 
@@ -151,6 +159,12 @@ void app_process_action(void)
       unexpectedTransition(&app_state, status);
       return;
     }
+    if (join_attempts > max_join_attempts) {
+      lgoInfoln("Max join attempts reached, halting");
+      app_state = APP_STATE_HALTED;
+      return;
+    }
+    join_attempts++;
     logInfoln("Not connected to any network");
     EmberStatus sscan_status = emberStartScan(
       EMBER_ACTIVE_SCAN,
