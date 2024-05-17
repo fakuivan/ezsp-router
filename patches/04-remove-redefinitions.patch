@@ -1,0 +1,30 @@
+--- a/src/gecko_sdk_4.0.2/platform/radio/mac/mac-types.h	2024-05-17 00:42:29.336392785 -0300
++++ b/src/gecko_sdk_4.0.2/platform/radio/mac/mac-types.h	2024-05-16 23:33:08.518138312 -0300
+@@ -24,10 +24,11 @@
+ typedef uint16_t sl_mac_pan_id_t;
+ 
+ typedef uint16_t EmberPanId;
+-typedef uint16_t EmberNodeId;
+-
++#ifndef EUI64_SIZE
+ #define EUI64_SIZE 8
+ typedef uint8_t EmberEUI64[EUI64_SIZE];
++typedef uint16_t EmberNodeId;
++#endif
+ 
+ typedef uint8_t EmberMessageLength;
+ #define EMBER_NO_CHILD_DEFAULT   0x0000 // default value in tokens for child table
+--- a/src/gecko_sdk_4.0.2/platform/service/token_manager/src/sl_token_def.c	2024-05-17 00:42:29.283316882 -0300
++++ b/src/gecko_sdk_4.0.2/platform/service/token_manager/src/sl_token_def.c	2024-05-16 23:33:35.428027953 -0300
+@@ -17,9 +17,11 @@
+ 
+ #include <stdint.h>
+ #include <stdbool.h>
++#ifndef EUI64_SIZE
+ #define EUI64_SIZE 8
+ typedef uint8_t EmberEUI64[EUI64_SIZE];
+ typedef uint16_t EmberNodeId;
++#endif
+ #include "stack/config/ember-configuration-defaults.h"
+ 
+ //-- Build structure defines (these define all the data types of the tokens).

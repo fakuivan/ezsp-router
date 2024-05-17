@@ -1,0 +1,10 @@
+--- a/src/gecko_sdk_4.0.2/protocol/zigbee/app/ezsp-host/ezsp-host-io.c	2024-05-17 00:42:29.447252573 -0300
++++ b/src/gecko_sdk_4.0.2/protocol/zigbee/app/ezsp-host/ezsp-host-io.c	2024-05-17 00:49:11.750631357 -0300
+@@ -41,6 +41,7 @@
+ #include "app/ezsp-host/ezsp-host-common.h"
+ #include "app/ezsp-host/ezsp-host-io.h"
+ #include "app/ezsp-host/ezsp-host-ui.h"
++#include <sys/ttydefaults.h>
+ 
+ #ifndef STATIC_ASSERT
+ #ifdef __ICCARM__

@@ -213,7 +213,7 @@ void emberAfAppNetworkFoundHandler(EmberZigbeeNetwork *network, uint8_t lqi, int
   }
 }
 
-void emAfStackStatusCallback(EmberStatus status) {
+void emberAfAppStackStatusCallback(EmberStatus status) {
   if (app_state == APP_STATE_JOINING) {
     if (status == EMBER_NETWORK_UP) {
       app_state = APP_STATE_CONNECTED;
@@ -242,7 +242,6 @@ void emAfStackStatusCallback(EmberStatus status) {
   }
 }
 
-// These callbacks won't get called
 void emberAfAppScanCompleteHandler(uint8_t channel, EmberStatus status) {
   if (app_state != APP_STATE_SCANNING) {
     return;

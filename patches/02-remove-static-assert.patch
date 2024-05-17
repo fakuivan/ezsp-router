@@ -1,0 +1,12 @@
+--- a/src/gecko_sdk_4.0.2/protocol/zigbee/app/ezsp-host/ezsp-host-io.c	2024-05-17 00:42:29.447252573 -0300
++++ b/src/gecko_sdk_4.0.2/protocol/zigbee/app/ezsp-host/ezsp-host-io.c	2024-05-17 00:46:21.331269583 -0300
+@@ -47,8 +47,7 @@
+   #define STATIC_ASSERT(__condition, __errorstr) \
+   static_assert(__condition, __errorstr)
+ #elif defined(__GNUC__)
+-  #define STATIC_ASSERT(__condition, __errorstr) \
+-  _Static_assert(__condition, __errorstr)
++  #define STATIC_ASSERT(__condition, __errorstr)
+ #else
+   #define STATIC_ASSERT(__condition, __errorstr)
+ #endif

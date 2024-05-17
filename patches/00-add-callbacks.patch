@@ -1,0 +1,20 @@
+--- a/src/ZigbeeMinimalHost.slcp	2024-05-17 00:42:48.592061847 -0300
++++ b/src/ZigbeeMinimalHost.slcp	2024-05-16 23:59:57.881861119 -0300
+@@ -56,4 +56,16 @@
+ ui_hints:
+   highlight:
+   - {path: readme.html}
+-
++template_contribution:
++- name: zigbee_stack_callback
++  value:
++    callback_type: network_found
++    function_name: emberAfAppNetworkFoundHandler
++- name: zigbee_stack_callback
++  value:
++    callback_type: stack_status
++    function_name: emberAfAppStackStatusCallback
++- name: zigbee_stack_callback
++  value:
++    callback_type: scan_complete
++    function_name: emberAfAppScanCompleteHandler

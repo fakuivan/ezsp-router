@@ -1,0 +1,26 @@
+--- a/src/ZigbeeMinimalHost.project.mak	2024-05-17 00:42:48.392062547 -0300
++++ b/src/ZigbeeMinimalHost.project.mak	2024-05-16 23:38:15.306936626 -0300
+@@ -127,7 +127,6 @@
+  -Wall \
+  -Wextra \
+  -Os \
+- -m32 \
+  -Wno-unused-parameter \
+  -Wno-missing-field-initializers \
+  -Wno-missing-braces \
+@@ -138,7 +137,6 @@
+  -Wall \
+  -Wextra \
+  -Os \
+- -m32 \
+  -Wno-unused-parameter \
+  -Wno-missing-field-initializers \
+  -Wno-missing-braces \
+@@ -147,7 +145,6 @@
+ ASM_FLAGS += \
+ 
+ LD_FLAGS += \
+- -m32
+ 
+ 
+ ####################################################################
