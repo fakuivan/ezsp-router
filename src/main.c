@@ -175,6 +175,7 @@ void app_process_action(void)
       app_state = APP_STATE_NO_NETWORK;
       return;
     }
+    networks_found = 0;
 
     EmberInitialSecurityState sec_state;
     (void) memcpy(
