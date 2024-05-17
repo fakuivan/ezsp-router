@@ -29,7 +29,7 @@
 #include "af.h"
 
 #define assertAppCase(cond, message_lit, args...) if (!cond) {\
-  emberAfAppPrintln("ERROR: " message_lit "\n", args); \
+  emberAfAppPrintln("ERROR: " message_lit, args); \
   emberAfAppFlush(); \
   assert(false); \
 }
