@@ -34,6 +34,11 @@
   assert(false); \
 }
 
+#define logInfoWith(func, args...) func("INFO: " args)
+
+#define logInfoln(args...) logInfoWith(emberAfAppPrintln, args)
+#define logInfo(args...) logInfoWith(emberAfAppPrint, args)
+
 typedef enum {
   APP_STATE_UNKNOWN,
   APP_STATE_DISCONNECTED,
@@ -92,9 +97,11 @@ void app_process_action(void)
   if (app_state == APP_STATE_UNKNOWN) {
     switch (status) {
       case EMBER_NO_NETWORK:
+        logInfoln("Joining network");
         app_state = APP_STATE_NO_NETWORK;
         return;
       case EMBER_JOINED_NETWORK:
+        logInfoln("Connected to network");
         app_state = APP_STATE_CONNECTED;
         return;
       case EMBER_JOINING_NETWORK:
@@ -114,11 +121,13 @@ void app_process_action(void)
       unexpectedTransition(&app_state, status);
       return;
     }
+    logInfoln("Disconnected from network");
     EmberStatus rejoin_status = ezspFindAndRejoinNetwork(true, EMBER_ALL_802_15_4_CHANNELS_MASK);
     if (rejoin_status != EMBER_SUCCESS) {
       unexpectedTransition(&app_state, status);
       return;
     }
+    logInfoln("Trying to reconnect...");
     app_state = APP_STATE_RECONNECTING;
     return;
   }
@@ -126,6 +135,7 @@ void app_process_action(void)
   if (app_state == APP_STATE_JOINING) {
     switch (status) {
       case EMBER_JOINED_NETWORK:
+        logInfoln("Joined network");
         app_state = APP_STATE_CONNECTED;
         return;
       case EMBER_JOINING_NETWORK:
@@ -141,6 +151,7 @@ void app_process_action(void)
       unexpectedTransition(&app_state, status);
       return;
     }
+    logInfoln("Not connected to any network");
     EmberStatus sscan_status = emberStartScan(
       EMBER_ACTIVE_SCAN,
       EMBER_ALL_802_15_4_CHANNELS_MASK,
@@ -149,6 +160,7 @@ void app_process_action(void)
     if (sscan_status != EMBER_SUCCESS)
       unexpectedTransition(&app_state, status);
     else
+      logInfoln("Starting scan");
       app_state = APP_STATE_SCANNING;
     return;
   }
@@ -159,6 +171,7 @@ void app_process_action(void)
       return;
     }
     if (networks_found == 0) {
+      logInfoln("Failed to find any joinable networks");
       app_state = APP_STATE_NO_NETWORK;
       return;
     }
@@ -172,6 +185,7 @@ void app_process_action(void)
                         | EMBER_HAVE_PRECONFIGURED_KEY
                         | EMBER_REQUIRE_ENCRYPTED_KEY
                         | EMBER_NO_FRAME_COUNTER_RESET);
+    logInfoln("Setting initial security state");
     EmberStatus sec_status = ezspSetInitialSecurityState(&sec_state);
     if (sec_status != EMBER_SUCCESS) {
       unexpectedTransition(&app_state, status);
@@ -190,6 +204,7 @@ void app_process_action(void)
     params.nwkUpdateId = best_network.nwkUpdateId;
     params.channels = 0; // check
     params.nwkManagerId = 0; //check
+    logInfoln("Trying to join network");
     EmberStatus join_status = ezspJoinNetwork(EMBER_ROUTER, &params);
     if (join_status != EMBER_SUCCESS) {
       unexpectedTransition(&app_state, status);
@@ -203,23 +218,36 @@ void emberAfAppNetworkFoundHandler(EmberZigbeeNetwork *network, uint8_t lqi, int
   if (app_state != APP_STATE_SCANNING) {
     return;
   }
+  logInfo("Found network with EPAN: ");
+  printIeeeLine(network->extendedPanId);
   if (!network->allowingJoin) {
+    logInfoln("Network doesn't allow joining");
     return;
   }
+  logInfoln("Network allows joining");
   if (networks_found == 0 || rssi > best_rssi) {
     networks_found++;
     best_rssi = rssi;
     (void) memcpy(&best_network, network, sizeof(network));
+  }
+  if (networks_found > 0) {
+    if (rssi > best_rssi) {
+      logInfoln("Network has higher RSSI than last best one");
+    } else {
+      logInfoln("Network has lower RSSI, keeping the last best one for now");
+    }
   }
 }
 
 void emberAfAppStackStatusCallback(EmberStatus status) {
   if (app_state == APP_STATE_JOINING) {
     if (status == EMBER_NETWORK_UP) {
+      logInfoln("Joined network");
       app_state = APP_STATE_CONNECTED;
       return;
     }
     if (status == EMBER_JOIN_FAILED) {
+      logInfoln("Failed to join network");
       app_state = APP_STATE_NO_NETWORK;
       return;
     }
@@ -231,11 +259,13 @@ void emberAfAppStackStatusCallback(EmberStatus status) {
       unexpectedTransition(&app_state, status);
       return;
     }
+    logInfoln("Reconnected to network");
     app_state = APP_STATE_CONNECTED;
     return;
   }
   if (app_state == APP_STATE_CONNECTED) {
     if (status == EMBER_NETWORK_DOWN) {
+      logInfoln("Disconnected from network");
       app_state = APP_STATE_DISCONNECTED;
     }
     return;
@@ -249,6 +279,7 @@ void emberAfAppScanCompleteHandler(uint8_t channel, EmberStatus status) {
   if (status != EMBER_SUCCESS) {
     unexpectedTransition(&app_state, status);
   }
+  logInfoln("Finished scanning for networks");
   app_state = APP_STATE_SCANNED;
 }
 
