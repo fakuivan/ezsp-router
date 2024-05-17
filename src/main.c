@@ -171,11 +171,12 @@ void app_process_action(void)
       EMBER_ALL_802_15_4_CHANNELS_MASK,
       3
     );
-    if (sscan_status != EMBER_SUCCESS)
+    if (sscan_status != EMBER_SUCCESS) {
       unexpectedTransition(&app_state, status);
-    else
+    } else {
       logInfoln("Starting scan");
       app_state = APP_STATE_SCANNING;
+    }
     return;
   }
 
