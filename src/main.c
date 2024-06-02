@@ -244,7 +244,7 @@ void emberAfAppNetworkFoundHandler(EmberZigbeeNetwork *network, uint8_t lqi, int
   if (networks_found == 0 || rssi > best_rssi) {
     networks_found++;
     best_rssi = rssi;
-    (void) memcpy(&best_network, network, sizeof(network));
+    (void) memcpy(&best_network, network, sizeof(*network));
   }
   if (networks_found > 0) {
     if (rssi > best_rssi) {
