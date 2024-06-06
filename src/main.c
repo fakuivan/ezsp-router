@@ -28,9 +28,19 @@
 
 #include "af.h"
 #include "ezsp-enum-decode.h"
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include "commands.h"
 
-#define assertAppCase(cond, message_lit, args...) if (!(cond)) {\
-  emberAfAppPrintln("ERROR: " message_lit, args); \
+#define INVALID_FD -1
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+
+#define assertAppCase(cond, message_lit_and_args...) if (!(cond)) {\
+  emberAfAppPrintln("ERROR: " message_lit_and_args); \
   emberAfAppFlush(); \
   assert(false); \
 }
@@ -53,15 +63,135 @@ typedef enum {
 } APP_STATE;
 APP_STATE app_state = APP_STATE_UNKNOWN;
 
+const char* decode_app_state(APP_STATE state) {
+  switch (state) {
+    case APP_STATE_UNKNOWN: return "APP_STATE_UNKNOWN";
+    case APP_STATE_DISCONNECTED: return "APP_STATE_DISCONNECTED";
+    case APP_STATE_RECONNECTING: return "APP_STATE_RECONNECTING";
+    case APP_STATE_NO_NETWORK: return "APP_STATE_NO_NETWORK";
+    case APP_STATE_SCANNING: return "APP_STATE_SCANNING";
+    case APP_STATE_SCANNED: return "APP_STATE_SCANNED";
+    case APP_STATE_JOINING: return "APP_STATE_JOINING";
+    case APP_STATE_CONNECTED: return "APP_STATE_CONNECTED";
+    case APP_STATE_HALTED: return "APP_STATE_HALTED";
+  }
+  assert(0);
+}
+
+const char* decode_app_state_short(APP_STATE state) {
+  switch (state) {
+    case APP_STATE_UNKNOWN: return "unknown";
+    case APP_STATE_DISCONNECTED: return "disconnected";
+    case APP_STATE_RECONNECTING: return "reconnecting";
+    case APP_STATE_NO_NETWORK: return "no_network";
+    case APP_STATE_SCANNING: return "scanning";
+    case APP_STATE_SCANNED: return "scanned";
+    case APP_STATE_JOINING: return "joining";
+    case APP_STATE_CONNECTED: return "connected";
+    case APP_STATE_HALTED: return "halted";
+  }
+  assert(0);
+}
+
 EmberZigbeeNetwork best_network = {};
 int8_t best_rssi;
 int networks_found = 0;
 int join_attempts = 0;
+
+FILE* input_fifo_file = NULL;
+FILE* output_fifo_file = NULL;
+
 const int max_join_attempts = 5;
+const char input_fifo_name[] = "ezsp_router.in";
+const char output_fifo_name[] = "ezsp_router.out";
+const char pid_file_name[] = "ezsp_router.pid";
+
+static void on_state_changed(APP_STATE prev_state, APP_STATE new_state) {
+  assert(output_fifo_file != NULL);
+  fprintf(
+    output_fifo_file,
+    "state %s %s\n",
+    decode_app_state_short(prev_state),
+    decode_app_state_short(new_state)
+  );
+  fflush(output_fifo_file);
+}
+
+void remove_fifos() {
+  fclose(input_fifo_file);
+  fclose(output_fifo_file);
+  remove(input_fifo_name);
+  remove(output_fifo_name);
+}
+
+FILE* fopen_flags(const char* file_name, int flags, const char* mode, int* fd) {
+  *fd = open(file_name, flags);
+  if (*fd == INVALID_FD) {
+    return NULL;
+  }
+  FILE* file = fdopen(*fd, mode);
+  if (!file) {
+    close(*fd);
+  }
+  return file;
+}
+
+void init_fifos() {
+  logInfoln("Creating input fifo");
+  if (mkfifo(input_fifo_name, 0666) != 0) {
+    assertAppCase(false, "Failed to create input fifo for IPC: %s", strerror(errno));
+  }
+
+  logInfoln("Opening input fifo");
+  int fd = INVALID_FD;
+  if (!(input_fifo_file = fopen_flags(input_fifo_name, O_RDONLY | O_NONBLOCK, "r", &fd))) {
+    logInfoln("Failed to open input control fifo");
+    remove(input_fifo_name);
+    assertAppCase(false, "Failed to open input control fifo: %s", strerror(errno));
+  }
+
+  logInfoln("Creating output fifo");
+  if (mkfifo(output_fifo_name, 0666) != 0) {
+    remove(input_fifo_name);
+    fclose(input_fifo_file);
+    assertAppCase(false, "Failed to create input fifo for IPC");
+  }
+
+  logInfoln("Opening output fifo");
+  if (!(output_fifo_file = fopen_flags(output_fifo_name, O_RDWR | O_NONBLOCK, "w", &fd))) {
+    remove(input_fifo_name);
+    fclose(input_fifo_file);
+    remove(output_fifo_name);
+    assertAppCase(false, "Failed to open output control fifo: %s", strerror(errno));
+  }
+}
+
+static void on_exit() {
+  logInfoln("Doing cleanup");
+  remove_fifos();
+  remove(pid_file_name);
+}
+
+bool create_pid_file(const char* file_name) {
+  FILE* pid_file = fopen(file_name, "wx");
+  if (!pid_file) {
+    return false;
+  }
+  fprintf(pid_file, "%ld\n", (long)getpid());
+  fclose(pid_file);
+  return true;
+}
 
 void app_init(void)
 {
-  // remove init since the AF does it for us
+  logInfoln("Creating pid file");
+  if (!create_pid_file(pid_file_name)) {
+    assertAppCase(false, "Failed to create PID file");
+  }
+  logInfoln("Creating control fifos");
+  init_fifos();
+  logInfoln("Registering exit function");
+  atexit(on_exit);
 }
 
 APP_STATE advance_state(APP_STATE next_state) {
@@ -69,6 +199,7 @@ APP_STATE advance_state(APP_STATE next_state) {
   if (prev_state == next_state) {
     return prev_state;
   }
+  on_state_changed(prev_state, next_state);
   app_state = next_state;
   return prev_state;
 }
@@ -81,8 +212,8 @@ void unexpectedTransition(EmberNetworkStatus status) {
   APP_STATE prev_state = advance_state(APP_STATE_UNKNOWN);
   emberAfAppPrintln(
     "WARNING: Unexpected transition from app state "
-      "%d to APP_STATE_UNKNOWN due to status 0x%02X\n",
-    prev_state,
+      "%s to APP_STATE_UNKNOWN due to status 0x%02X\n",
+    decode_app_state(prev_state),
     status);
   emberAfAppFlush();
 }
