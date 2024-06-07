@@ -1,2 +1,4 @@
 /src/*
-!/src/main.c
+!/src/*.c
+!/src/*.h
+!/src/tests/

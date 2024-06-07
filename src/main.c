@@ -223,8 +223,57 @@ static const EmberKeyData defaultLinkKey = {
     0x6C, 0x69, 0x61, 0x6E, 0x63, 0x65, 0x30, 0x39 }
 };
 
+bool process_command(const char* command) {
+  // TODO: join, leave
+  // should we just use optarg?
+  char argument[COMMAND_MAX_LENGTH+1];
+  assert(strlen(command) <= sizeof(argument));
+  if (sscanf(command, "%s", argument) < 1) {
+    logInfoln("Got empty command");
+    return false;
+  }
+  if (strcmp(argument, "exit") == 0) {
+    uint8_t code = 0;
+    sscanf(command + strlen(argument), "%hhu", &code);
+    logInfoln("Got exit command, code: %hhu", code);
+    exit(code);
+  }
+  logInfoln("Unrecognized command: %s", command);
+  return false;
+}
+
+void poll_commands() {
+  static char commands_buffer[COMMAND_MAX_LENGTH+1];
+  static char command_buffer[COMMAND_MAX_LENGTH+1];
+  bool have_command, buffer_full = false;
+  assert(input_fifo_file);
+  if (!read_command(
+    fileno(input_fifo_file),
+    commands_buffer,
+    command_buffer,
+    MIN(sizeof(commands_buffer), sizeof(command_buffer)),
+    &buffer_full,
+    &have_command)
+  ) {
+    assertAppCase(
+      false,
+      "Failed to read from command input buffer: %s",
+      strerror(errno)
+    );
+  }
+  assertAppCase(!buffer_full,
+    "Command exceeded length of buffer (max is %d)", sizeof(command_buffer)-1
+  );
+  if (have_command) {
+    processs_command(command_buffer);
+    strcpy(command_buffer, "");
+  }
+}
+
 void app_process_action(void)
 {
+  poll_commands();
+
   if (in_state(APP_STATE_HALTED)) {
     return;
   }
