@@ -42,7 +42,7 @@ the directory with patches you want to apply, and the docker command to use
 (could use `podman` here). For example:
 
 ```bash
-./gsdk/init_project.sh "$IMAGE_NAME" patches/orvibo-minihub/ sudo docker
+./gsdk/gen_project.sh "$IMAGE_NAME" patches/orvibo-minihub/ sudo docker
 ```
 
 This same script can be re-run in case you modified something on the project file or
